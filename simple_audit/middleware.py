@@ -18,7 +18,7 @@ class TrackingRequestOnThreadLocalMiddleware(object):
         ip = ip.split(",")[0]
         return ip
 
-    def import_from_string(val, setting_name):
+    def _import_from_string(self, val, setting_name):
         """
         Attempt to import a class from a string representation.
         """
@@ -38,7 +38,7 @@ class TrackingRequestOnThreadLocalMiddleware(object):
             AuditRequest.new_request(request.get_full_path(), request.user, ip)
         else:
             if settings.DJANGO_SIMPLE_AUDIT_REST_FRAMEWORK_AUTHENTICATOR:
-                authenticator = import_from_string(settings.DJANGO_SIMPLE_AUDIT_REST_FRAMEWORK_AUTHENTICATOR, 'DJANGO_SIMPLE_AUDIT_AUTHENTICATOR')
+                authenticator = self._import_from_string(settings.DJANGO_SIMPLE_AUDIT_REST_FRAMEWORK_AUTHENTICATOR, 'DJANGO_SIMPLE_AUDIT_AUTHENTICATOR')
                 user_auth_tuple = settings.DJANGO_SIMPLE_AUDIT_REST_FRAMEWORK_AUTHENTICATOR().authenticate(request)
 
                 if user_auth_tuple is not None:
