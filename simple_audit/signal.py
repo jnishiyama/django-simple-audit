@@ -50,16 +50,13 @@ def audit_m2m_change(sender, **kwargs):
         elif kwargs['action'] == "post_clear":
             pass
 
-@shared_task
-def audit_post_save_async(sender, **kwargs):
+
+def audit_post_save(sender, **kwargs):
     if kwargs['created']:
         save_audit.delay(kwargs['instance'], Audit.ADD, AuditRequest.current_request(True), kwargs={})
 
-def audit_post_save(sender, **kwargs):
-    audit_post_save_async.delay(sender, **kwargs)
 
-@shared_task
-def audit_pre_save_async(sender, **kwargs):
+def audit_pre_save(sender, **kwargs):
     instance=kwargs.get('instance')
     if instance.pk:
         if settings.DJANGO_SIMPLE_AUDIT_M2M_FIELDS:
@@ -72,15 +69,8 @@ def audit_pre_save_async(sender, **kwargs):
         save_audit.delay(kwargs['instance'], Audit.CHANGE, AuditRequest.current_request(True), kwargs={})
 
 
-def audit_pre_save(sender, **kwargs):
-    audit_pre_save_async.delay(sender, **kwargs)
-
-@shared_task
-def audit_pre_delete_aync(sender, **kwargs):
-    save_audit.delay(kwargs['instance'], Audit.DELETE, AuditRequest.current_request(True), kwargs={})
-
 def audit_pre_delete(sender, **kwargs):
-    audit_pre_delete_aync.delay(sender, **kwargs)
+    save_audit.delay(kwargs['instance'], Audit.DELETE, AuditRequest.current_request(True), kwargs={})
 
 
 def register(*my_models):
