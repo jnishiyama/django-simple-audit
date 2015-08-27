@@ -6,7 +6,7 @@ import threading
 from pprint import pprint
 from . import m2m_audit
 from django.db import models
-from .models import Audit, AuditChange
+from .models import Audit, AuditChange, AuditRequest
 from . import settings
 from django.utils.translation import ugettext_lazy as _
 from django.core.cache import cache
@@ -40,11 +40,11 @@ def audit_m2m_change(sender, **kwargs):
             dict_["new_state"] = m2m_audit.get_m2m_values_for(instance=instance)
             dict_["m2m_change"] = True
             cache.set(cache_key, dict_, DEFAULT_CACHE_TIMEOUT)
-            save_audit.delay(instance, Audit.CHANGE, Audit.current_request(), kwargs=dict_)
+            save_audit.delay(instance, Audit.CHANGE, AuditRequest.current_request(), kwargs=dict_)
         elif kwargs['action'] == "pre_remove":
             pass
         elif kwargs['action'] == "post_remove":
-            save_audit.delay(kwargs['instance'], Audit.DELETE, Audit.current_request(), kwargs=kwargs)
+            save_audit.delay(kwargs['instance'], Audit.DELETE, AuditRequest.current_request(), kwargs=kwargs)
         elif kwargs['action'] == "pre_clear":
             pass
         elif kwargs['action'] == "post_clear":
@@ -53,7 +53,7 @@ def audit_m2m_change(sender, **kwargs):
 
 def audit_post_save(sender, **kwargs):
     if kwargs['created']:
-        save_audit.delay(kwargs['instance'], Audit.ADD, Audit.current_request())
+        save_audit.delay(kwargs['instance'], Audit.ADD, AuditRequest.current_request())
 
 
 def audit_pre_save(sender, **kwargs):
@@ -66,11 +66,11 @@ def audit_pre_save(sender, **kwargs):
                 dict_["old_state"] = m2m_audit.get_m2m_values_for(instance=instance)
                 cache.set(cache_key, dict_, DEFAULT_CACHE_TIMEOUT)
                 LOG.debug("old_state saved in cache with key %s for m2m auditing" % cache_key)
-        save_audit.delay(kwargs['instance'], Audit.CHANGE, Audit.current_request())
+        save_audit.delay(kwargs['instance'], Audit.CHANGE, AuditRequest.current_request())
 
 
 def audit_pre_delete(sender, **kwargs):
-    save_audit.delay(kwargs['instance'], Audit.DELETE, Audit.current_request())
+    save_audit.delay(kwargs['instance'], Audit.DELETE, AuditRequest.current_request())
 
 
 def register(*my_models):
