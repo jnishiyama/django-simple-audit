@@ -59,13 +59,16 @@ class Audit(models.Model):
         verbose_name_plural = _('Audits')
 
     @staticmethod
-    def register(audit_obj, description, operation=None):
+    def register(audit_obj, description, operation=None, audit_request=None):
         audit = Audit()
         audit.operation = Audit.CHANGE if operation is None else operation
         audit.content_object = audit_obj
         audit.description = description
         audit.obj_description = (audit_obj and unicode(audit_obj) and '')[:100]
-        audit.audit_request = AuditRequest.current_request(True)
+        if audit_request is not None:
+            audit.audit_request = audit_request
+        else:
+            audit.audit_request = AuditRequest.current_request(True)
         audit.save()
         return audit
 

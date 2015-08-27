@@ -40,11 +40,11 @@ def audit_m2m_change(sender, **kwargs):
             dict_["new_state"] = m2m_audit.get_m2m_values_for(instance=instance)
             dict_["m2m_change"] = True
             cache.set(cache_key, dict_, DEFAULT_CACHE_TIMEOUT)
-            save_audit(instance, Audit.CHANGE, kwargs=dict_)
+            save_audit.delay(instance, Audit.CHANGE, Audit.current_request(), kwargs=dict_)
         elif kwargs['action'] == "pre_remove":
             pass
         elif kwargs['action'] == "post_remove":
-            save_audit(kwargs['instance'], Audit.DELETE, kwargs=kwargs)
+            save_audit.delay(kwargs['instance'], Audit.DELETE, Audit.current_request(), kwargs=kwargs)
         elif kwargs['action'] == "pre_clear":
             pass
         elif kwargs['action'] == "post_clear":
@@ -53,7 +53,7 @@ def audit_m2m_change(sender, **kwargs):
 
 def audit_post_save(sender, **kwargs):
     if kwargs['created']:
-        save_audit(kwargs['instance'], Audit.ADD)
+        save_audit.delay(kwargs['instance'], Audit.ADD, Audit.current_request())
 
 
 def audit_pre_save(sender, **kwargs):
@@ -66,11 +66,11 @@ def audit_pre_save(sender, **kwargs):
                 dict_["old_state"] = m2m_audit.get_m2m_values_for(instance=instance)
                 cache.set(cache_key, dict_, DEFAULT_CACHE_TIMEOUT)
                 LOG.debug("old_state saved in cache with key %s for m2m auditing" % cache_key)
-        save_audit(kwargs['instance'], Audit.CHANGE)
+        save_audit.delay(kwargs['instance'], Audit.CHANGE, Audit.current_request())
 
 
 def audit_pre_delete(sender, **kwargs):
-    save_audit(kwargs['instance'], Audit.DELETE)
+    save_audit.delay(kwargs['instance'], Audit.DELETE, Audit.current_request())
 
 
 def register(*my_models):
@@ -160,8 +160,8 @@ def format_value(v):
         return u"'%s'" % v
     return unicode(v)
 
-# @shared_task
-def save_audit(instance, operation, kwargs={}):
+@shared_task
+def save_audit(instance, operation, audit_request, kwargs={}):
     """
     Saves the audit.
     However, the variable persist_audit controls if the audit should be really
@@ -236,7 +236,7 @@ def save_audit(instance, operation, kwargs={}):
         if persist_audit:
             if m2m_change:
                 for description in descriptions:
-                    audit = Audit.register(instance, description, operation)
+                    audit = Audit.register(instance, description, operation, audit_request)
                     changed_field = changed_fields.pop(0)
                     
                     for field, (old_value, new_value) in changed_field.items():
@@ -247,7 +247,7 @@ def save_audit(instance, operation, kwargs={}):
                         change.old_value = handle_unicode(old_value)
                         change.save()
             else:
-                audit = Audit.register(instance, description, operation)
+                audit = Audit.register(instance, description, operation, audit_request)
 
                 for field, (old_value, new_value) in changed_fields.items():
                     change = AuditChange()
