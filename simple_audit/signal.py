@@ -40,11 +40,11 @@ def audit_m2m_change(sender, **kwargs):
             dict_["new_state"] = m2m_audit.get_m2m_values_for(instance=instance)
             dict_["m2m_change"] = True
             cache.set(cache_key, dict_, DEFAULT_CACHE_TIMEOUT)
-            save_audit.delay(instance, Audit.CHANGE, AuditRequest.current_request(True), kwargs=dict_)
+            save_audit(instance, Audit.CHANGE, AuditRequest.current_request(True), kwargs=dict_)
         elif kwargs['action'] == "pre_remove":
             pass
         elif kwargs['action'] == "post_remove":
-            save_audit.delay(kwargs['instance'], Audit.DELETE, AuditRequest.current_request(True), kwargs=kwargs)
+            save_audit(kwargs['instance'], Audit.DELETE, AuditRequest.current_request(True), kwargs=kwargs)
         elif kwargs['action'] == "pre_clear":
             pass
         elif kwargs['action'] == "post_clear":
@@ -53,7 +53,7 @@ def audit_m2m_change(sender, **kwargs):
 
 def audit_post_save(sender, **kwargs):
     if kwargs['created']:
-        save_audit.delay(kwargs['instance'], Audit.ADD, AuditRequest.current_request(True), kwargs={})
+        save_audit(kwargs['instance'], Audit.ADD, AuditRequest.current_request(True), kwargs={})
 
 
 def audit_pre_save(sender, **kwargs):
@@ -66,14 +66,15 @@ def audit_pre_save(sender, **kwargs):
                 dict_["old_state"] = m2m_audit.get_m2m_values_for(instance=instance)
                 cache.set(cache_key, dict_, DEFAULT_CACHE_TIMEOUT)
                 LOG.debug("old_state saved in cache with key %s for m2m auditing" % cache_key)
-        save_audit.delay(kwargs['instance'], Audit.CHANGE, AuditRequest.current_request(True), kwargs={})
+        save_audit(kwargs['instance'], Audit.CHANGE, AuditRequest.current_request(True), kwargs={})
 
 
 def audit_pre_delete(sender, **kwargs):
-    save_audit.delay(kwargs['instance'], Audit.DELETE, AuditRequest.current_request(True), kwargs={})
+    save_audit(kwargs['instance'], Audit.DELETE, AuditRequest.current_request(True), kwargs={})
 
-
+@shared_task
 def register(*my_models):
+    print "AHSDLFKHASLKDHFALSKHDF"
     if not settings.DJANGO_SIMPLE_AUDIT_ACTIVATED:
         return False
     global MODEL_LIST
@@ -160,7 +161,7 @@ def format_value(v):
         return u"'%s'" % v
     return unicode(v)
 
-@shared_task
+# @shared_task
 def save_audit(instance, operation, audit_request, kwargs={}):
     """
     Saves the audit.
