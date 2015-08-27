@@ -160,7 +160,7 @@ def format_value(v):
         return u"'%s'" % v
     return unicode(v)
 
-@shared_task
+# @shared_task
 def save_audit(instance, operation, kwargs={}):
     """
     Saves the audit.
