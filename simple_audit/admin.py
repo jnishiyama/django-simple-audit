@@ -5,7 +5,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.utils.translation import ugettext_lazy as _
 from django.utils.html import escape
 from django.core.urlresolvers import reverse
-from .models import Audit
+from .models import Audit, AuditRequest
 from .signal import MODEL_LIST
 
 
@@ -89,4 +89,4 @@ class AuditAdmin(admin.ModelAdmin):
     def has_add_permission(self, request):
             return False
 
-admin.site.register(Audit, AuditAdmin)
+admin.site.register(Audit, AuditAdmin, AuditRequest)

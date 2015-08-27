@@ -42,9 +42,7 @@ class TrackingRequestOnThreadLocalMiddleware(object):
                 user_auth_tuple = authenticator().authenticate(request)
                 if user_auth_tuple is not None:
                     user = user_auth_tuple[0]
-                    print user
                     ip = self._get_ip(request)
-                    print ip
                     AuditRequest.new_request(request.get_full_path(), user, ip)
 
     def process_response(self, request, response):
