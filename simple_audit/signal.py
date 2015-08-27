@@ -53,7 +53,7 @@ def audit_m2m_change(sender, **kwargs):
 
 def audit_post_save(sender, **kwargs):
     if kwargs['created']:
-        save_audit.delay(kwargs['instance'], Audit.ADD, AuditRequest.current_request(), kwargs=kwargs)
+        save_audit.delay(kwargs['instance'], Audit.ADD, AuditRequest.current_request())
 
 
 def audit_pre_save(sender, **kwargs):
@@ -66,11 +66,11 @@ def audit_pre_save(sender, **kwargs):
                 dict_["old_state"] = m2m_audit.get_m2m_values_for(instance=instance)
                 cache.set(cache_key, dict_, DEFAULT_CACHE_TIMEOUT)
                 LOG.debug("old_state saved in cache with key %s for m2m auditing" % cache_key)
-        save_audit.delay(kwargs['instance'], Audit.CHANGE, AuditRequest.current_request(), kwargs=kwargs)
+        save_audit.delay(kwargs['instance'], Audit.CHANGE, AuditRequest.current_request())
 
 
 def audit_pre_delete(sender, **kwargs):
-    save_audit.delay(kwargs['instance'], Audit.DELETE, AuditRequest.current_request(), kwargs=kwargs)
+    save_audit.delay(kwargs['instance'], Audit.DELETE, AuditRequest.current_request())
 
 
 def register(*my_models):
@@ -236,7 +236,7 @@ def save_audit(instance, operation, audit_request, kwargs={}):
         if persist_audit:
             if m2m_change:
                 for description in descriptions:
-                    audit = Audit.register(instance, description, operation, audit_request)
+                    audit = Audit.register(instance, description, audit_request, operation)
                     changed_field = changed_fields.pop(0)
                     
                     for field, (old_value, new_value) in changed_field.items():
@@ -247,7 +247,7 @@ def save_audit(instance, operation, audit_request, kwargs={}):
                         change.old_value = handle_unicode(old_value)
                         change.save()
             else:
-                audit = Audit.register(instance, description, operation, audit_request)
+                audit = Audit.register(instance, description, audit_request, operation)
 
                 for field, (old_value, new_value) in changed_fields.items():
                     change = AuditChange()
