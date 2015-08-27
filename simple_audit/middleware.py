@@ -39,7 +39,7 @@ class TrackingRequestOnThreadLocalMiddleware(object):
         else:
             if settings.DJANGO_SIMPLE_AUDIT_REST_FRAMEWORK_AUTHENTICATOR:
                 authenticator = self._import_from_string(settings.DJANGO_SIMPLE_AUDIT_REST_FRAMEWORK_AUTHENTICATOR, 'DJANGO_SIMPLE_AUDIT_AUTHENTICATOR')
-                user_auth_tuple = settings.DJANGO_SIMPLE_AUDIT_REST_FRAMEWORK_AUTHENTICATOR().authenticate(request)
+                user_auth_tuple = authenticator().authenticate(request)
 
                 if user_auth_tuple is not None:
                     user, token = user_auth_tuple
