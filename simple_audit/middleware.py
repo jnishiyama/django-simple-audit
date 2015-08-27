@@ -1,6 +1,7 @@
 # threadlocals middleware
 from .models import AuditRequest
 from . import settings
+from django.utils import importlib
 
 class TrackingRequestOnThreadLocalMiddleware(object):
     """Middleware that gets various objects from the
@@ -17,12 +18,27 @@ class TrackingRequestOnThreadLocalMiddleware(object):
         ip = ip.split(",")[0]
         return ip
 
+    def import_from_string(val, setting_name):
+        """
+        Attempt to import a class from a string representation.
+        """
+        try:
+            # Nod to tastypie's use of importlib.
+            parts = val.split('.')
+            module_path, class_name = '.'.join(parts[:-1]), parts[-1]
+            module = importlib.import_module(module_path)
+            return getattr(module, class_name)
+        except ImportError as e:
+            msg = "Could not import '%s' for API setting '%s'. %s: %s." % (val, setting_name, e.__class__.__name__, e)
+            raise ImportError(msg)
+
     def process_request(self, request):
         if not request.user.is_anonymous():
             ip = self._get_ip(request)
             AuditRequest.new_request(request.get_full_path(), request.user, ip)
         else:
             if settings.DJANGO_SIMPLE_AUDIT_REST_FRAMEWORK_AUTHENTICATOR:
+                authenticator = import_from_string(settings.DJANGO_SIMPLE_AUDIT_REST_FRAMEWORK_AUTHENTICATOR, 'DJANGO_SIMPLE_AUDIT_AUTHENTICATOR')
                 user_auth_tuple = settings.DJANGO_SIMPLE_AUDIT_REST_FRAMEWORK_AUTHENTICATOR().authenticate(request)
 
                 if user_auth_tuple is not None:
