@@ -89,4 +89,5 @@ class AuditAdmin(admin.ModelAdmin):
     def has_add_permission(self, request):
             return False
 
-admin.site.register(Audit, AuditAdmin, AuditRequest)
+admin.site.register(Audit, AuditAdmin)
+admin.site.register(AuditRequest)
