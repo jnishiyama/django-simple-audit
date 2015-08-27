@@ -18,13 +18,6 @@ MODEL_LIST = set()
 LOG = logging.getLogger(__name__)
 DEFAULT_CACHE_TIMEOUT = 120
 
-# http://www.dougalmatthews.com/2011/Oct/10/making-djangos-signals-async-with-celery/
-from django.dispatch.dispatcher import Signal
-def reducer(self):
-    return (Signal, (self.providing_args,))
-Signal.__reduce__ = reducer
-
-
 def get_cache_key_for_instance(instance, cache_prefix="django_simple_audit"):
     
     return "%s:%s:%s" % (cache_prefix, instance.__class__.__name__, instance.pk)
@@ -47,24 +40,23 @@ def audit_m2m_change(sender, **kwargs):
             dict_["new_state"] = m2m_audit.get_m2m_values_for(instance=instance)
             dict_["m2m_change"] = True
             cache.set(cache_key, dict_, DEFAULT_CACHE_TIMEOUT)
-            save_audit(instance, Audit.CHANGE, AuditRequest.current_request(True), kwargs=dict_)
+            save_audit.delay(instance, Audit.CHANGE, AuditRequest.current_request(True), kwargs=dict_)
         elif kwargs['action'] == "pre_remove":
             pass
         elif kwargs['action'] == "post_remove":
-            save_audit(kwargs['instance'], Audit.DELETE, AuditRequest.current_request(True), kwargs=kwargs)
+            save_audit.delay(kwargs['instance'], Audit.DELETE, AuditRequest.current_request(True), kwargs=kwargs)
         elif kwargs['action'] == "pre_clear":
             pass
         elif kwargs['action'] == "post_clear":
             pass
 
-@shared_task(ignore_result=True)
+
 def audit_post_save(sender, **kwargs):
     if kwargs['created']:
-        save_audit(kwargs['instance'], Audit.ADD, AuditRequest.current_request(True), kwargs={})
+        save_audit.delay(kwargs['instance'], Audit.ADD, AuditRequest.current_request(True), kwargs={})
 
-@shared_task(ignore_result=True)
+
 def audit_pre_save(sender, **kwargs):
-    print "ASLDKFHALSKHDFLAKH"
     instance=kwargs.get('instance')
     if instance.pk:
         if settings.DJANGO_SIMPLE_AUDIT_M2M_FIELDS:
@@ -74,12 +66,11 @@ def audit_pre_save(sender, **kwargs):
                 dict_["old_state"] = m2m_audit.get_m2m_values_for(instance=instance)
                 cache.set(cache_key, dict_, DEFAULT_CACHE_TIMEOUT)
                 LOG.debug("old_state saved in cache with key %s for m2m auditing" % cache_key)
-        save_audit(kwargs['instance'], Audit.CHANGE, AuditRequest.current_request(True), kwargs={})
+        save_audit.delay(kwargs['instance'], Audit.CHANGE, AuditRequest.current_request(True), kwargs={})
 
-@shared_task(ignore_result=True)
+
 def audit_pre_delete(sender, **kwargs):
-    save_audit(kwargs['instance'], Audit.DELETE, AuditRequest.current_request(True), kwargs={})
-
+    save_audit.delay(kwargs['instance'], Audit.DELETE, AuditRequest.current_request(True), kwargs={})
 
 def register(*my_models):
     if not settings.DJANGO_SIMPLE_AUDIT_ACTIVATED:
@@ -89,9 +80,9 @@ def register(*my_models):
         if model is not None:
             if model not in MODEL_LIST:
                 MODEL_LIST.add(model)
-            models.signals.pre_save.connect(audit_pre_save.delay, sender=model)
-            models.signals.post_save.connect(audit_post_save.delay, sender=model)
-            models.signals.pre_delete.connect(audit_pre_delete.delay, sender=model)
+            models.signals.pre_save.connect(audit_pre_save, sender=model)
+            models.signals.post_save.connect(audit_post_save, sender=model)
+            models.signals.pre_delete.connect(audit_pre_delete, sender=model)
 
             # signals for m2m fields
             if settings.DJANGO_SIMPLE_AUDIT_M2M_FIELDS:
@@ -168,7 +159,7 @@ def format_value(v):
         return u"'%s'" % v
     return unicode(v)
 
-# @shared_task
+@shared_task
 def save_audit(instance, operation, audit_request, kwargs={}):
     """
     Saves the audit.
