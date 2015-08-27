@@ -11,6 +11,9 @@ from . import settings
 from django.utils.translation import ugettext_lazy as _
 from django.core.cache import cache
 
+from celery import shared_task
+from celery.utils.log import get_task_logger
+
 MODEL_LIST = set()
 LOG = logging.getLogger(__name__)
 DEFAULT_CACHE_TIMEOUT = 120
@@ -37,11 +40,11 @@ def audit_m2m_change(sender, **kwargs):
             dict_["new_state"] = m2m_audit.get_m2m_values_for(instance=instance)
             dict_["m2m_change"] = True
             cache.set(cache_key, dict_, DEFAULT_CACHE_TIMEOUT)
-            save_audit(instance, Audit.CHANGE, kwargs=dict_)
+            save_audit.delay(instance, Audit.CHANGE, kwargs=dict_)
         elif kwargs['action'] == "pre_remove":
             pass
         elif kwargs['action'] == "post_remove":
-            save_audit(kwargs['instance'], Audit.DELETE, kwargs=kwargs)
+            save_audit.delay(kwargs['instance'], Audit.DELETE, kwargs=kwargs)
         elif kwargs['action'] == "pre_clear":
             pass
         elif kwargs['action'] == "post_clear":
@@ -50,7 +53,7 @@ def audit_m2m_change(sender, **kwargs):
 
 def audit_post_save(sender, **kwargs):
     if kwargs['created']:
-        save_audit(kwargs['instance'], Audit.ADD)
+        save_audit.delay(kwargs['instance'], Audit.ADD)
 
 
 def audit_pre_save(sender, **kwargs):
@@ -63,11 +66,11 @@ def audit_pre_save(sender, **kwargs):
                 dict_["old_state"] = m2m_audit.get_m2m_values_for(instance=instance)
                 cache.set(cache_key, dict_, DEFAULT_CACHE_TIMEOUT)
                 LOG.debug("old_state saved in cache with key %s for m2m auditing" % cache_key)
-        save_audit(kwargs['instance'], Audit.CHANGE)
+        save_audit.delay(kwargs['instance'], Audit.CHANGE)
 
 
 def audit_pre_delete(sender, **kwargs):
-    save_audit(kwargs['instance'], Audit.DELETE)
+    save_audit.delay(kwargs['instance'], Audit.DELETE)
 
 
 def register(*my_models):
@@ -157,7 +160,7 @@ def format_value(v):
         return u"'%s'" % v
     return unicode(v)
 
-
+@shared_task
 def save_audit(instance, operation, kwargs={}):
     """
     Saves the audit.
