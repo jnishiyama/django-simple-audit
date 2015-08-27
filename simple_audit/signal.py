@@ -56,7 +56,7 @@ def audit_post_save_async(sender, **kwargs):
         save_audit.delay(kwargs['instance'], Audit.ADD, AuditRequest.current_request(True), kwargs={})
 
 def audit_post_save(sender, **kwargs):
-    audit_post_save_async.delay()
+    audit_post_save_async.delay(sender, **kwargs)
 
 @shared_task
 def audit_pre_save_async(sender, **kwargs):
@@ -73,14 +73,14 @@ def audit_pre_save_async(sender, **kwargs):
 
 
 def audit_pre_save(sender, **kwargs):
-    audit_pre_save_async.delay()
+    audit_pre_save_async.delay(sender, **kwargs)
 
 @shared_task
 def audit_pre_delete_aync(sender, **kwargs):
     save_audit.delay(kwargs['instance'], Audit.DELETE, AuditRequest.current_request(True), kwargs={})
 
 def audit_pre_delete(sender, **kwargs):
-    audit_pre_delete_aync.delay()
+    audit_pre_delete_aync.delay(sender, **kwargs)
 
 
 def register(*my_models):
