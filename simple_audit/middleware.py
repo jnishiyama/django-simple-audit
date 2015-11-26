@@ -41,8 +41,8 @@ class TrackingRequestOnThreadLocalMiddleware(object):
                 authenticator = self._import_from_string(settings.DJANGO_SIMPLE_AUDIT_REST_FRAMEWORK_AUTHENTICATOR, 'DJANGO_SIMPLE_AUDIT_AUTHENTICATOR')
                 user_auth_tuple = authenticator().authenticate(request)
                 if user_auth_tuple is not None:
-                    request.user = user_auth_tuple[0]
-                    request.auth = user_auth_tuple[1]
+                    request._user = user_auth_tuple[0]
+                    request._auth = user_auth_tuple[1]
                     ip = self._get_ip(request)
                     AuditRequest.new_request(request.get_full_path(), request.user, ip)
 
