@@ -44,7 +44,7 @@ class TrackingRequestOnThreadLocalMiddleware(object):
                     request._user = user_auth_tuple[0]
                     request._auth = user_auth_tuple[1]
                     ip = self._get_ip(request)
-                    AuditRequest.new_request(request.get_full_path(), request.user, ip)
+                    AuditRequest.new_request(request.get_full_path(), request._user, ip)
 
     def process_response(self, request, response):
         AuditRequest.cleanup_request()
